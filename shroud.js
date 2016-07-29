@@ -90,16 +90,20 @@ function createApp(port) {
 
   let _tasks = new Map();
 
-  app.registerTask = function(taskKey, taskValue){
-    if(_tasks.has(taskKey)) throw new Error(`task ${taskKey} is already registered`);
-    if(typeof taskValue !== "function") throw new Error(`task ${taskKey} must reference a function`);
-    _tasks.set(taskKey, taskValue);
-  };
-
-  app.runTask = function(taskKey){
-    if(!_tasks.has(taskKey)) throw new Error(`task ${taskKey} is not registered`);
-    _tasks.get(taskKey).call();
-  };
+  app.registerTask = registerTask.bind(null, _tasks);
+  app.runTask = runTask.bind(null, _tasks);
 
   return app;
+}
+
+
+function registerTask(tasks, taskKey, taskValue){
+  if(tasks.has(taskKey)) throw new Error(`task ${taskKey} is already registered`);
+  if(typeof taskValue !== "function") throw new Error(`task ${taskKey} must reference a function`);
+  tasks.set(taskKey, taskValue);
+}
+
+function runTask(tasks, taskKey){
+  if(!tasks.has(taskKey)) throw new Error(`task ${taskKey} is not registered`);
+  tasks.get(taskKey).call();
 }
