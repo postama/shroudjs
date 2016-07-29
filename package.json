@@ -1,0 +1,19 @@
+{
+  "name": "shroudjs",
+  "version": "0.0.1",
+  "description": "Application Layer Javascript Encryption",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/postama/shroudjs.git"
+  },
+  "author": "Adam Postma",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/postama/shroudjs/issues"
+  },
+  "homepage": "https://github.com/postama/shroudjs#readme"
+}
