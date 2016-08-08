@@ -5,6 +5,7 @@ let http = require('http');
 let qs = require('querystring');
 let crypto = require('crypto');
 let nacl_factory = require('js-nacl');
+let rawBody = require('raw-body');
 /*jshint -W079 */
 let Promise = require('bluebird');
 let path = require('path');
@@ -29,12 +30,24 @@ function handlePost(req, res, app){
   let plainDecrypted = nacl.crypto_box_open(cipherMsg, nonce, sender.boxPk, receiver.boxSk);
   console.log(nacl.decode_utf8(plainDecrypted));
 
-  app.runTask('Test');
+  rawBody(req)
+    .then(buff => req.body = JSON.parse(buff.toString()))
+    .catch(err => createError(500, err))
+    .then(() => {
+      if(!req.body.task){
+        throw createError(400, "no task field specified");
+      }
+      app.runTask(req.body.task);
+    })
+    .catch((e) => {
+      createError(e);
+    });
 
   res.writeHead(200, {
     'Content-Type':'application/json',
     'X-Powered-By':'cloak'
   });
+
   res.end(JSON.stringify({"test":"obj"}));
 }
 
@@ -61,11 +74,12 @@ function handleGet(req, res, app){
       if(err.code == 'ENOENT') return createError('404', res);
       return createError('500', res);
     });
-
 }
 
-function createError(code, res, info){
-
+function createError(code = 500, res = 'An unspecified server error has occured', info = `Unspecified error: ${new Date()}`){
+  console.log(code);
+  console.log(res);
+  console.log(info);
 }
 
 exports.createApp = createApp;
