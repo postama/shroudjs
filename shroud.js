@@ -56,6 +56,8 @@ function handleGet(req, res, app){
   let publicFolderName = 'public';
   let filePath = `./${publicFolderName}${req.url}`;
   if (filePath == `./${publicFolderName}/`) filePath = `./${publicFolderName}/index.html`;
+  console.log(filePath);
+  if (filePath == `./${publicFolderName}/key.js`) return generateKeyFile(req, res, app);
 
   let extName = path.extname(filePath);
 
@@ -71,14 +73,23 @@ function handleGet(req, res, app){
       res.end(content, 'utf-8');
     })
     .catch(err => {
-      if(err.code == 'ENOENT') return createError('404', res);
+      if(err.code == 'ENOENT') return createError(res, '404');
       return createError('500', res);
     });
 }
 
-function createError(code = 500, res = 'An unspecified server error has occured', info = `Unspecified error: ${new Date()}`){
+function generateKeyFile(req, res, app) {
+  let keypair = nacl.crypto_box_keypair();
+  res.writeHead(200, {'Content-Type':'text/javascript'});
+  console.log(typeof keypair.boxPk);
+  console.log(keypair.boxPk);
+  let privateKey = nacl.decode_latin1(keypair.boxPk);
+  res.end(`let SERVER_KEY = "${privateKey}"`);
+  //Save public and private key to DB.
+}
+
+function createError(res, code = 500, info = `Unspecified error: ${new Date()}`) {
   console.log(code);
-  console.log(res);
   console.log(info);
 }
 
