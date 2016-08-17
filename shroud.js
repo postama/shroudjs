@@ -18,21 +18,22 @@ nacl_factory.instantiate(n => nacl = n);
 function handlePost(req, res, app){
   if (req.url !== "/api") return createError('404', res);
 
-  let sender = nacl.crypto_box_keypair();
-  let receiver = nacl.crypto_box_keypair();
+  function decrypt(data){
+    let cryptoMessage = nacl.from_hex(data.message);
+    let nonce = nacl.from_hex(data.nonce);
+    let clientKey = nacl.from_hex(data.clientKey);
+    let privateKey = nacl.from_hex(global.privateKey);
+    let message = nacl.crypto_box_open(cryptoMessage, nonce, clientKey, privateKey);
+  }
+
+  let client = nacl.crypto_box_keypair();
+  let server = nacl.crypto_box_keypair();
   let nonce = nacl.crypto_box_random_nonce();
-
-  //Encrypt
-  let plainText = nacl.encode_utf8('This is a message');
-  let cipherMsg = nacl.crypto_box(plainText, nonce, receiver.boxPk, sender.boxSk);
-
-  //Decrypt
-  let plainDecrypted = nacl.crypto_box_open(cipherMsg, nonce, sender.boxPk, receiver.boxSk);
-  console.log(nacl.decode_utf8(plainDecrypted));
 
   rawBody(req)
     .then(buff => req.body = JSON.parse(buff.toString()))
     .catch(err => createError(500, err))
+    .then(decrypt)
     .then(() => {
       if(!req.body.task){
         throw createError(400, "no task field specified");
@@ -80,11 +81,10 @@ function handleGet(req, res, app){
 
 function generateKeyFile(req, res, app) {
   let keypair = nacl.crypto_box_keypair();
+  let publicKey = nacl.to_hex(keypair.boxPk);
   res.writeHead(200, {'Content-Type':'text/javascript'});
-  console.log(typeof keypair.boxPk);
-  console.log(keypair.boxPk);
-  let privateKey = nacl.decode_latin1(keypair.boxPk);
-  res.end(`let SERVER_KEY = "${privateKey}"`);
+  global.privateKey = nacl.to_hex(keypair.boxSk);
+  res.end(`let SERVER_KEY = "${publicKey}";`);
   //Save public and private key to DB.
 }
 
