@@ -15,15 +15,32 @@ let fs = Promise.promisifyAll(require('fs'));
 let nacl;
 nacl_factory.instantiate(n => nacl = n);
 
+let keystore = {};
+
+//Structure
+// SPK: Server Public Key in hex
+// Value: {
+//   Server Private Key : XYZ in hex
+//   Last Time Used: Date() in date
+//   Client Public Key : ABC in hex
+// }
+
 function handlePost(req, res, app){
   if (req.url !== "/api") return createError('404', res);
 
   function decrypt(data){
     let cryptoMessage = nacl.from_hex(data.message);
     let nonce = nacl.from_hex(data.nonce);
-    global.clientKey = data.clientKey;
-    let clientKey = nacl.from_hex(data.clientKey);
-    let privateKey = nacl.from_hex(global.privateKey);
+    let serverKey = data.serverKey;
+    global.serverKey = data.serverKey;
+    if(!(serverKey in keystore)) throw new Error('Key missing');
+    let keys = keystore[serverKey];
+    let SSK = keys.SSK;
+    let CPK = data.clientKey;
+    let LA = new Date();
+    keystore[serverKey] = {SSK:SSK, CPK:CPK, LA:LA};
+    let clientKey = nacl.from_hex(CPK);
+    let privateKey = nacl.from_hex(SSK);
     let message = nacl.crypto_box_open(cryptoMessage, nonce, clientKey, privateKey);
     req.body = JSON.parse(nacl.decode_utf8(message));
   }
@@ -31,7 +48,9 @@ function handlePost(req, res, app){
   function encrypt(){
     let message = nacl.encode_utf8('from server asrasdfasfd');
     let nonce = nacl.crypto_box_random_nonce();
-    let cipherMsg = nacl.crypto_box(message, nonce, nacl.from_hex(global.clientKey), nacl.from_hex(global.privateKey));
+    if(!(global.serverKey in keystore)) throw new Error('Key missing');
+    let keys = keystore[global.serverKey];
+    let cipherMsg = nacl.crypto_box(message, nonce, nacl.from_hex(keys.CPK), nacl.from_hex(keys.SSK));
 
     let requestObject = {
       message: nacl.to_hex(cipherMsg),
@@ -50,7 +69,7 @@ function handlePost(req, res, app){
     .then(decrypt)
     .then(() => {
       if(!req.body.task) throw {status:400, message:"no task field specified"};
-      return app[req.body.task]; 
+      return app[req.body.task];
     })
     .then(encrypt)
     .then((data) => {
@@ -95,7 +114,9 @@ function generateKeyFile(req, res) {
   let keypair = nacl.crypto_box_keypair();
   let publicKey = nacl.to_hex(keypair.boxPk);
   res.writeHead(200, {'Content-Type':'text/javascript'});
-  global.privateKey = nacl.to_hex(keypair.boxSk);
+
+  keystore[publicKey] = {SSK:nacl.to_hex(keypair.boxSk), LA:new Date()};
+
   res.end(`let SERVER_KEY = "${publicKey}";`);
   //Save public and private key to DB.
 }

@@ -29,7 +29,6 @@ nacl_factory.instantiate(nacl => {
   xhr.onreadystatechange = function(){
     if(xhr.readyState == 4 && xhr.status ==200){
       let response = JSON.parse(xhr.responseText);
-      console.log(response);
       let responseText = nacl.from_hex(response.message);
       let nonce = nacl.from_hex(response.nonce);
       let msg = nacl.crypto_box_open(responseText, nonce, receiver_key, keypair.boxSk);
