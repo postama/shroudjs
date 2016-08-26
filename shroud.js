@@ -32,7 +32,6 @@ function handlePost(req, res, app){
     let cryptoMessage = nacl.from_hex(data.message);
     let nonce = nacl.from_hex(data.nonce);
     let serverKey = data.serverKey;
-    global.serverKey = data.serverKey;
     if(!(serverKey in keystore)) throw new Error('Key missing');
     let keys = keystore[serverKey];
     let SSK = keys.SSK;
@@ -42,14 +41,18 @@ function handlePost(req, res, app){
     let clientKey = nacl.from_hex(CPK);
     let privateKey = nacl.from_hex(SSK);
     let message = nacl.crypto_box_open(cryptoMessage, nonce, clientKey, privateKey);
+    req.SPK =  data.serverKey;
     req.body = JSON.parse(nacl.decode_utf8(message));
+    return req;
   }
 
-  function encrypt(){
+  function encrypt(data){
+    let resultsFromTask = data[0];
+    let SPK = data[1];
     let message = nacl.encode_utf8('from server asrasdfasfd');
     let nonce = nacl.crypto_box_random_nonce();
-    if(!(global.serverKey in keystore)) throw new Error('Key missing');
-    let keys = keystore[global.serverKey];
+    if(!(SPK in keystore)) throw new Error('Key missing');
+    let keys = keystore[SPK];
     let cipherMsg = nacl.crypto_box(message, nonce, nacl.from_hex(keys.CPK), nacl.from_hex(keys.SSK));
 
     let requestObject = {
@@ -67,9 +70,9 @@ function handlePost(req, res, app){
   rawBody(req)
     .then(buff => req.body = JSON.parse(buff.toString()))
     .then(decrypt)
-    .then(() => {
+    .then((req) => {
       if(!req.body.task) throw {status:400, message:"no task field specified"};
-      return app[req.body.task];
+      return Promise.all([app[req.body.task], Promise.resolve(req.SPK)]);
     })
     .then(encrypt)
     .then((data) => {
