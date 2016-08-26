@@ -6,6 +6,6 @@ let app = shroud.newApp(port);
 app.test = logTest;
 console.log(`Shroud Server Started on port ${port}`);
 
-function logTest(){
-  console.log('test');
+function logTest(body){
+  return 'from Server';
 }

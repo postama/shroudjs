@@ -43,13 +43,15 @@ function handlePost(req, res, app){
     let message = nacl.crypto_box_open(cryptoMessage, nonce, clientKey, privateKey);
     req.SPK =  data.serverKey;
     req.body = JSON.parse(nacl.decode_utf8(message));
+    req.task = req.body.task;
+    delete req.body.task;
     return req;
   }
 
   function encrypt(data){
     let resultsFromTask = data[0];
     let SPK = data[1];
-    let message = nacl.encode_utf8('from server asrasdfasfd');
+    let message = nacl.encode_utf8(JSON.stringify(resultsFromTask));
     let nonce = nacl.crypto_box_random_nonce();
     if(!(SPK in keystore)) throw new Error('Key missing');
     let keys = keystore[SPK];
@@ -71,8 +73,8 @@ function handlePost(req, res, app){
     .then(buff => req.body = JSON.parse(buff.toString()))
     .then(decrypt)
     .then((req) => {
-      if(!req.body.task) throw {status:400, message:"no task field specified"};
-      return Promise.all([app[req.body.task], Promise.resolve(req.SPK)]);
+      if(!req.task) throw {status:400, message:"no task field specified"};
+      return app[req.task](req.body).then((results)=> [results, req.SPK]);
     })
     .then(encrypt)
     .then((data) => {
@@ -167,7 +169,9 @@ function createApp(port) {
   let handler = {
     get: (target, name) => {
       if(name in target){
-        return Promise.resolve(target[name].call());
+        return function(body){
+          return Promise.resolve(target[name].call(null, body));
+        };
       } else {
         throw new Error(`task ${name} is not registered`);
       }
