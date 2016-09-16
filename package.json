@@ -17,7 +17,9 @@
   },
   "homepage": "https://github.com/postama/shroudjs#readme",
   "dependencies": {
+    "atob": "^2.0.3",
     "bluebird": "^3.4.1",
+    "btoa": "^1.1.2",
     "js-nacl": "^1.2.0",
     "raw-body": "^2.1.7"
   }

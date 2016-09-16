@@ -1,9 +1,9 @@
 'use strict';
 
-let shroud = require("./shroud.js");
+let shroud = require("./shroud/shroud.js");
 const port = 8124;
-let app = shroud.newApp(port);
-app.test = logTest;
+shroud.newApp(port);
+shroud.getApp().test = logTest;
 console.log(`Shroud Server Started on port ${port}`);
 
 function logTest(body){
