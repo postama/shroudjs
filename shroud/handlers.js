@@ -9,18 +9,18 @@ module.exports = {handleRequest};
 
 let app;
 
-function handlePost(keystore, req, res) {
+function handlePost(req, res) {
   if(!app) app = require('./shroud').getApp();
   if (req.url !== "/api") return createError(res, 404);
 
   rawBody(req)
     .then(buff => JSON.parse(buff.toString()))
-    .then(decrypt.bind(null, keystore))
-    .then((req) => {
-      if (!req.task) throw { status: 400, message: "no task field specified" };
-      return app[req.task](req.body).then((results) => [results, req.SPK]);
+    .then(decrypt)
+    .then(data => {
+      if (!data.task) throw { status: 400, message: "no task field specified" };
+      return app[data.task](data.body).then((results) => [results, data.SPK]);
     })
-    .then(encrypt.bind(null, keystore))
+    .then(encrypt)
     .then((data) => {
       res.writeHead(200, {
         'Content-Type': 'application/json',
@@ -34,12 +34,12 @@ function handlePost(keystore, req, res) {
 }
 
 //All GETs should be for files
-function handleGet(keystore, req, res) {
+function handleGet(req, res) {
   let publicFolderName = 'public';
   let filePath = `./${publicFolderName}${req.url}`;
   if (filePath == `./${publicFolderName}/`) filePath = `./${publicFolderName}/index.html`;
   if (filePath == `./${publicFolderName}/key.js`) {
-    let publicKey = generateKeyFile(keystore);
+    let publicKey = generateKeyFile();
     res.writeHead(200, { 'Content-Type': 'text/javascript' });
     res.end(`let SERVER_KEY = "${publicKey}";`);
     return;
@@ -73,11 +73,11 @@ function createError(res, code = 500, info = `Unspecified error: ${new Date().to
   res.end(JSON.stringify({ msg: info }));
 }
 
-function handleRequest(keystore, req, res) {
+function handleRequest(req, res) {
   req.on('error', handleError.bind(null, res));
   res.on('error', handleError.bind(null, res));
-  if (req.method === 'GET') return handleGet(keystore, req, res);
-  if (req.method === 'POST') return handlePost(keystore, req, res);
+  if (req.method === 'GET') return handleGet(req, res);
+  if (req.method === 'POST') return handlePost(req, res);
 }
 
 function handleError(res, err) {

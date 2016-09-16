@@ -7,13 +7,15 @@ let nacl_factory = require('js-nacl');
 let nacl;
 nacl_factory.instantiate(n => nacl = n);
 
+//Local modules
+let {getKey, setKey} = require('./keystore.js');
+//Exports
 module.exports = { encrypt, decrypt, from64, to64, generateKeyFile }
 
-function encrypt(keystore, [resultsFromTask, SPK]) {
+function encrypt([resultsFromTask, SPK]) {
     let message = nacl.encode_utf8(JSON.stringify(resultsFromTask));
     let nonce = nacl.crypto_box_random_nonce();
-    if (!(SPK in keystore)) throw new Error('Key missing');
-    let keys = keystore[SPK];
+    let keys = getKey(SPK)
     let cipherMsg = nacl.crypto_box(message, nonce, keys.CPK, keys.SSK);
 
     let requestObject = {
@@ -24,11 +26,11 @@ function encrypt(keystore, [resultsFromTask, SPK]) {
     return JSON.stringify(requestObject);
 }
 
-function decrypt(keystore, {message, nonce, SPK, clientKey}) {
-    if (!(SPK in keystore)) throw new Error('Key missing');
-    let keys = keystore[SPK];
+function decrypt({message, nonce, SPK, clientKey}) {
+    let keys = getKey(SPK);
     keys.LA = new Date();
     keys.CPK = from64(clientKey);
+    setKey(SPK, keys);
     message = nacl.crypto_box_open(from64(message), from64(nonce), keys.CPK, keys.SSK);
     let body = JSON.parse(nacl.decode_utf8(message));
     let task = body.task;
@@ -44,10 +46,9 @@ function to64(bytes) {
   return btoa(String.fromCharCode.apply(null, bytes))
 }
 
-function generateKeyFile(keystore, req, res) {
+function generateKeyFile(req, res) {
   let {boxPk, boxSk} = nacl.crypto_box_keypair();
   let publicKey = to64(boxPk);
-    //Save public and private key to DB.
-  keystore[publicKey] = { SSK: boxSk, LA: new Date() };
+  setKey(publicKey, {SSK:boxSk, LA: new Date()});
   return publicKey;
 }
