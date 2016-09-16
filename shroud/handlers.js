@@ -1,7 +1,6 @@
 let path = require('path');
-let Promise = require('bluebird');
-let fs = Promise.promisifyAll(require('fs'));
 let rawBody = require('raw-body');
+let fs = require('fs');
 
 let {encrypt, decrypt, from64, to64, generateKeyFile} = require('./encrypt');
 
@@ -11,7 +10,7 @@ let app;
 
 function handlePost(req, res) {
   if(!app) app = require('./shroud').getApp();
-  if (req.url !== "/api") return createError(res, 404);
+  if (req.url !== "/api") return createError(res, 404, "must request a proper route");
 
   rawBody(req)
     .then(buff => JSON.parse(buff.toString()))
@@ -28,9 +27,7 @@ function handlePost(req, res) {
       });
       res.end(data);
     })
-    .catch((e) => {
-      createError(res, e.status, e.message, e);
-    });
+    .catch((e) => createError(res, e.status, e.message, e));
 }
 
 //All GETs should be for files
@@ -53,7 +50,7 @@ function handleGet(req, res) {
     default: contentType = 'text/html'; break;
   }
 
-  fs.readFileAsync(filePath)
+  readFilePromise(filePath)
     .then(content => {
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content, 'utf-8');
@@ -83,4 +80,16 @@ function handleRequest(req, res) {
 function handleError(res, err) {
   console.error(err);
   return createError(res, 500);
+}
+
+function readFilePromise(filePath, options){
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, options, (err, data) => {
+      if(err){
+        reject(err);
+      } else {
+        resolve(data);
+      }
+    })
+  })
 }

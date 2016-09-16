@@ -6,7 +6,6 @@
 let http = require('http');
 
 /*jshint -W079 */
-let Promise = require('bluebird');
 let {handleRequest} = require('./handlers');
 let proxy = require('./proxy');
 let {setKeystore} = require('./keystore');
