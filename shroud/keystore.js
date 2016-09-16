@@ -1,11 +1,11 @@
 module.exports = { getKey, setKey, setKeystore }
 
 function getKey(k) {
-    return keystore.getKey(k);
+    return Promise.resolve(keystore.getKey(k));
 }
 
 function setKey(k, o) {
-    return keystore.setKey(k, o);
+    return Promise.resolve(keystore.setKey(k, o)).then(() => o);
 }
 
 let keystore;
